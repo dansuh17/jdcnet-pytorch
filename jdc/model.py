@@ -110,6 +110,13 @@ class JDCNet(nn.Module):
         detector_out = self.detector(detector_out)
         detector_out = detector_out.view((-1, 31, 2))  # binary classifier
 
+        # add the pitch prediction values to determine the pitch existence from the classifier network
+        pitch_pred, nonvoice_pred = torch.split(classifier_out, [self.num_class - 1, 1], dim=2)
+        classifier_detection = torch.cat(
+            (torch.sum(pitch_pred, dim=2, keepdim=True), nonvoice_pred), dim=2)
+        # add the classifier network's and detector network's values
+        detector_out = detector_out + classifier_detection
+
         return classifier_out, detector_out
 
 
@@ -152,5 +159,7 @@ if __name__ == '__main__':
     dummy = torch.randn((10, 1, 31, 513))  # dummy random input
     jdc = JDCNet()
     clss, detect = jdc(dummy)
+    pitches, nonvoice = torch.split(clss, [1, 721], dim=2)
+    print(torch.sum(pitches, dim=2).size())
     print(clss.size())
     print(detect.size())

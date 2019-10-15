@@ -16,7 +16,38 @@ SourceInfo = namedtuple(
 
 # represents data tuple representing spectrogram
 # chunk and the melody note it's representing
-SpecHz = namedtuple('SpecHz', ['name', 'spec', 'hz', 'isvoice', 'start_idx'])
+SpecHz = namedtuple('SpecHz', ['name', 'spec', 'hz', 'label', 'isvoice', 'start_idx'])
+
+
+def midi_to_frequency(midi_num):
+    midi_A4 = 69
+    hz_A4 = 440
+    x = np.exp(np.log(2) / 12)  # conversion # multiplier
+    return hz_A4 * (x ** (midi_num - midi_A4))
+
+
+def interval_index(val, intervals):
+    l = len(intervals)
+    idx = l // 2
+    start = 0
+    end = l - 1
+    while True:
+        if intervals[idx] < val:
+            if idx == end:
+                return end
+            elif val < intervals[idx + 1]:
+                return idx
+            else:
+                start = idx + 1
+                idx = (start + end) // 2
+        else:
+            if idx == start:
+                return start
+            elif val > intervals[idx - 1]:
+                return idx
+            else:
+                end = idx - 1
+                idx = (start + end) // 2
 
 
 def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
@@ -39,6 +70,19 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
 
     mag_spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
     log_mag = np.log(mag_spec)
+
+    # TODO: factor out
+    # for quantizing frequency
+    """
+    45 semitones from D3 to B6 = 721 + nonvoice label = 722 labels
+    """
+    low = 38  # D2
+    high = 83  # B5
+    num_pitch_labels = 721
+    num_labels = num_pitch_labels + 1  # includes 'nonvoice' label
+    label_nonvoice = num_labels - 1
+    label_midis = np.linspace(low, high, num=num_pitch_labels)
+    label_hz = midi_to_frequency(label_midis)
 
     # split the spectrogram in chunks
     num_frames = log_mag.shape[1]
@@ -63,6 +107,13 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
 
         hz = melody_chunk['hz'].mean()
 
+        if is_voice == 1:
+            label = interval_index(hz, label_hz)  # find the interval index == label
+        else:
+            label = label_nonvoice
+
+        print(hz, label)
+
         # save the processed data to pickle file
         out_path = os.path.join(out_root, f'{source_info.fname}_{start_idx}.pkl')
         with open(out_path, 'wb') as wf:
@@ -70,6 +121,7 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
                 name=source_info.fname,
                 spec=chunk,
                 hz=hz,
+                label=label,
                 isvoice=is_voice,
                 start_idx=start_idx)
             pickle.dump(spec_hz, wf)
@@ -138,10 +190,11 @@ class MedleyDBMelodyDataset(dataset.Dataset):
 
 
 if __name__ == '__main__':
-    t = librosa.core.frames_to_time(19066, sr=8000, hop_length=80, n_fft=1024)
-    print(t)
+    # t = librosa.core.frames_to_time(19066, sr=8000, hop_length=80, n_fft=1024)
+    # print(t)
+
     # db = MedleyDBMelodyDataset('/Users/dansuh/datasets/', 'MedleyDB-Melody/medleydb_melody_metadata.json')
     # medleydb_preprocess('/Users/dansuh/datasets/MedleyDB-Melody/audio')
     preprocess('/Users/dansuh/datasets/', './out_root', 'MedleyDB-Melody/medleydb_melody_metadata.json')
 
-
+    # print(interval_index(812, [0, 1, 2, 4, 5]))

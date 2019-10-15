@@ -2,6 +2,10 @@
 # output data directory
 out_root
 
+### ctags
+tags.lock
+tags
+
 ### Idea
 .idea/
 *.iml

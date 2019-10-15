@@ -20,6 +20,14 @@ SpecHz = namedtuple('SpecHz', ['name', 'spec', 'hz', 'isvoice', 'start_idx'])
 
 
 def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
+    """
+    Preprocess a single source of MedleyDB mix.
+
+    Args:
+        source_info(SourceInfo): source audio information
+        out_root(str): output directory to save the resulting file
+        target_sr(int): target sample rate
+    """
     os.makedirs(out_root, exist_ok=True)
 
     df_melody = pd.read_csv(source_info.melody1_path, header=None, names=['sec', 'hz'])
@@ -32,15 +40,18 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
     mag_spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
     log_mag = np.log(mag_spec)
 
+    # split the spectrogram in chunks
     num_frames = log_mag.shape[1]
     chunk_size = 31
     for start_idx in range(0, num_frames, chunk_size):
         end_idx = start_idx + chunk_size
         chunk = log_mag[:, start_idx:end_idx]
         chunk_length = chunk.shape[1]
+        # most probably the chunk is short on frames at the end of audio
         if chunk_length != chunk_size:
             continue
 
+        # convert frame position to time range
         start_time, end_time = librosa.core.frames_to_time(
             (start_idx, end_idx), sr=target_sr, hop_length=80, n_fft=1024)
 
@@ -51,9 +62,8 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
             is_voice = 0  # indicate that no melody exists in this spectrogram chunk
 
         hz = melody_chunk['hz'].mean()
-        print(start_idx, start_time, end_time)
-        print(melody_chunk)
 
+        # save the processed data to pickle file
         out_path = os.path.join(out_root, f'{source_info.fname}_{start_idx}.pkl')
         with open(out_path, 'wb') as wf:
             spec_hz = SpecHz(
@@ -66,6 +76,16 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
 
 
 def read_source_infos(root: str, metadata_path: str):
+    """
+    Read MedleyDB data items from
+
+    Args:
+        root(str): data root
+        metadata_path(str): path to metadata file from data root
+
+    Returns:
+        list of SourceInfos
+    """
     with open(os.path.join(root, metadata_path), 'r') as meta_f:
         metadata = json.load(meta_f)
 
@@ -89,6 +109,14 @@ def read_source_infos(root: str, metadata_path: str):
 
 
 def preprocess(in_root: str, out_root: str, metadata_path: str):
+    """
+    Preprocess the entire data from MedleyDB dataset.
+
+    Args:
+        in_root(str): input data root directory
+        out_root(str): output data root directory
+        metadata_path(str): path from in_root to metadata file
+    """
     source_infos = read_source_infos(in_root, metadata_path)
     for si in source_infos:
         medleydb_preprocess(si, out_root)

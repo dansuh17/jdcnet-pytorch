@@ -1,3 +1,7 @@
+### Project Specifics
+# output data directory
+out_root
+
 ### Idea
 .idea/
 *.iml
@@ -175,4 +179,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-

@@ -69,7 +69,7 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
     y_resamp = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
 
     mag_spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
-    log_mag = np.log(mag_spec)
+    log_mag = np.log(np.abs(mag_spec))
 
     # TODO: factor out
     # for quantizing frequency
@@ -90,6 +90,7 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
     for start_idx in range(0, num_frames, chunk_size):
         end_idx = start_idx + chunk_size
         chunk = log_mag[:, start_idx:end_idx]
+
         chunk_length = chunk.shape[1]
         # most probably the chunk is short on frames at the end of audio
         if chunk_length != chunk_size:
@@ -119,7 +120,7 @@ def medleydb_preprocess(source_info: SourceInfo, out_root: str, target_sr=8000):
         with open(out_path, 'wb') as wf:
             spec_hz = SpecHz(
                 name=source_info.fname,
-                spec=chunk,
+                spec=np.swapaxes(chunk, 0, 1),  # swap: (freq_bin, chunk_size) => (chunk_size, freq_bin)
                 hz=hz,
                 label=label,
                 isvoice=is_voice,
@@ -176,17 +177,22 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
 
 class MedleyDBMelodyDataset(dataset.Dataset):
     def __init__(self, root: str):
-        self.datas = []
-        for fname in os.listdir(root):
-            with open(os.path.join(root, fname)) as f:
-                spec_hz: SpecHz = pickle.load(f)
-                self.datas.append(spec_hz)
+        self.fnames = [
+            os.path.join(root, fname)
+            for fname in os.listdir(root)]
+        print(self.fnames)
+
+    @staticmethod
+    def _read_data(path: str):
+        with open(path, 'rb') as f:
+            spec_hz: SpecHz = pickle.load(f)
+        return spec_hz.spec, spec_hz.label, spec_hz.isvoice
 
     def __len__(self):
-        return len(self.datas)
+        return len(self.fnames)
 
     def __getitem__(self, i):
-        return self.datas[i]
+        return self._read_data(self.fnames[i])
 
 
 if __name__ == '__main__':

@@ -32,7 +32,6 @@ dataloader = DataLoader(
     dataset, batch_size=batch_size,
     shuffle=True, drop_last=True, pin_memory=True)
 
-
 # total_loss = loss_classification(classified_res, gaussian_blur(target_pitch)) + loss_detection(detection_res, target_isvoice)
 
 num_classes = 722
@@ -47,15 +46,15 @@ for epoch in range(total_epoch):
         print(input_spec.shape)
 
         out_classification, out_detection = model(input_spec)
-        out_labels, out_isvoice = torch.split(out_classification, [1, 721], dim=2)
-        print(target_labels.size())
+        # out_labels, out_isvoice = torch.split(out_classification, [1, 721], dim=2)
+        print(out_classification.size())
 
         target_onehot = torch.FloatTensor(batch_size, num_classes).zero_().to(device)
-        print(target_onehot.size())
-        target_onehot = target_onehot.scatter(1, target_labels, 1)
+        target_onehot = target_onehot.scatter_(1, target_labels.unsqueeze(dim=1), 1)
         target_onehot = gaussian_blur(target_onehot)
 
-        total_loss = loss_classification(out_labels, target_onehot) + loss_detection(out_detection, )
+        print(target_onehot.size())
+        total_loss = loss_classification(out_classification, target_onehot)
 
 
 if __name__ == '__main__':

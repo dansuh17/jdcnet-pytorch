@@ -80,7 +80,7 @@ class CrossEntropyLossWithGaussianSmoothedLabels(nn.Module):
         return one_hot
 
 
-loss_classification = CrossEntropyLossWithGaussianSmoothedLabels(blur_range=0)
+loss_classification = CrossEntropyLossWithGaussianSmoothedLabels()
 loss_detection = nn.CrossEntropyLoss()
 
 

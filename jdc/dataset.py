@@ -29,14 +29,19 @@ def midi_to_frequency(midi_num):
 class PitchLabeler:
     def __init__(self, low=38, high=83, num_pitch_labels=721, nonvoice_threshold=0.1):
         """
+        Class that helps labeling pitches. Provided a frequency, the `label()` method
+        labels the frequency into one of the quantized frequency classes.
+        The number of labels should be provided as `num_pitch_labels`, and
+        the frequency range from `low` to `high` is divided equally in the log scale.
+        Total number of labels includes 'nonvoice' label, which is determined by the
+        `nonvoice_threshold` value.
+
+        default: 45 semitones from D3 to B6 = 721 + nonvoice label = 722 labels
 
         Args:
-            low:  D2
-            high:  B5
-            num_pitch_labels:
-        """
-        """
-        45 semitones from D3 to B6 = 721 + nonvoice label = 722 labels
+            low(int): MIDI number for lower pitch (default: 38 (D2))
+            high(int): MIDI number for higher pitch (default: B5 (B5))
+            num_pitch_labels(int): number of pitch labels
         """
         self.num_pitch_labels = num_pitch_labels
         self.num_labels = num_pitch_labels + 1  # includes 'nonvoice' label
@@ -46,6 +51,15 @@ class PitchLabeler:
         self.label_hz = midi_to_frequency(self.label_midis)
 
     def label(self, freq: float):
+        """
+        Given a frequency, return the pitch label.
+
+        Args:
+            freq(float): frequency
+
+        Returns:
+            pitch label
+        """
         if freq < self.nonvoice_threshold:
             return self.label_nonvoice
         else:
@@ -77,13 +91,11 @@ class PitchLabeler:
 
 
 def get_melody_labels_by_frame(
-        source_info: SourceInfo, pitch_labeler: PitchLabeler,
-        num_frames: int, frames_to_time):
+        source_info: SourceInfo, pitch_labeler: PitchLabeler, frame_times):
     # read melody info
     df_melody = pd.read_csv(source_info.melody1_path, header=None, names=['sec', 'hz'])
 
-    frame_indices = np.arange(num_frames)
-    frame_times = frames_to_time(frame_indices)
+    num_frames = len(frame_times)
 
     labels = []
     isvoice = []
@@ -106,20 +118,23 @@ def get_melody_labels_by_frame(
 
         labels.append(label)
         isvoice.append(1 if voice else 0)
-    return labels, isvoice
+    return np.array(labels), np.array(isvoice)
 
 
 def medleydb_preprocess(
         source_info: SourceInfo, out_root: str,
         pitch_labeler: PitchLabeler, target_sr=8000):
     """
-    Preprocess a single source of MedleyDB mix.
+    Preprocess a single source of MedleyDB mix and generates chunked data.
 
     Args:
         source_info(SourceInfo): source audio information
         out_root(str): output directory to save the resulting file
         target_sr(int): target sample rate
         pitch_labeler(PitchLabeler): pitch labeler
+
+    Returns:
+        spec_hz(SpecHz): includes chunked spectrogram, labeled pitches, and metadata
     """
     chunk_size = 31
 
@@ -133,13 +148,11 @@ def medleydb_preprocess(
     log_mag = np.log(np.abs(mag_spec))
     num_frames = log_mag.shape[1]
 
-    frames_to_time = lambda frame_indices: librosa.core.frames_to_time(
-        frame_indices, sr=target_sr, hop_length=80, n_fft=1024)
+    frame_indices = np.arange(num_frames)
+    frame_times = librosa.core.frames_to_time(frame_indices, sr=target_sr, hop_length=80, n_fft=1024)
 
-    # TODO: provide only the times
-    print('extracting melody...')
     pitch_labels, isvoice = get_melody_labels_by_frame(
-        source_info, pitch_labeler, num_frames, frames_to_time)
+        source_info, pitch_labeler, frame_times)
 
     assert(len(pitch_labels) == num_frames)
     assert(len(isvoice) == num_frames)
@@ -157,16 +170,13 @@ def medleydb_preprocess(
             continue
 
         # save the processed data to pickle file
-        out_path = os.path.join(out_root, f'{source_info.fname}_{start_idx}.pkl')
-        with open(out_path, 'wb') as wf:
-            spec_hz = SpecHz(
-                name=source_info.fname,
-                # swap: (freq_bin, chunk_size) => (chunk_size, freq_bin)
-                spec=np.swapaxes(chunk, axis1=0, axis2=1),
-                label=pitch_labels_chunk,
-                isvoice=isvoice_chunk,
-                start_idx=start_idx)
-            pickle.dump(spec_hz, wf)
+        yield SpecHz(
+            name=source_info.fname,
+            # swap: (freq_bin, chunk_size) => (chunk_size, freq_bin)
+            spec=np.swapaxes(chunk, axis1=0, axis2=1),
+            label=pitch_labels_chunk,
+            isvoice=isvoice_chunk,
+            start_idx=start_idx)
 
 
 def read_source_infos(root: str, metadata_path: str):
@@ -215,7 +225,11 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
     pitch_labeler = PitchLabeler()
     for si in source_infos:
         print(f'Preprocessing: {si.fname}')
-        medleydb_preprocess(si, out_root, pitch_labeler)
+        for spec_hz in medleydb_preprocess(si, out_root, pitch_labeler):
+            out_path = os.path.join(out_root, f'{spec_hz.name}_{spec_hz.start_idx}.pkl')
+            print(f'Saving: {out_path}')
+            with open(out_path, 'wb') as wf:
+                pickle.dump(spec_hz, wf)
 
 
 class MedleyDBMelodyDataset(dataset.Dataset):
@@ -238,9 +252,6 @@ class MedleyDBMelodyDataset(dataset.Dataset):
 
 
 if __name__ == '__main__':
-    # t = librosa.core.frames_to_time(19066, sr=8000, hop_length=80, n_fft=1024)
-    # print(t)
-
     # db = MedleyDBMelodyDataset('/Users/dansuh/datasets/', 'MedleyDB-Melody/medleydb_melody_metadata.json')
-    # medleydb_preprocess('/Users/dansuh/datasets/MedleyDB-Melody/audio')
-    preprocess('/Users/dansuh/datasets/', './out_root', 'MedleyDB-Melody/medleydb_melody_metadata.json')
+    preprocess(in_root='/Users/dansuh/datasets/', out_root='./out_root',
+               metadata_path='MedleyDB-Melody/medleydb_melody_metadata.json')

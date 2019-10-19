@@ -73,6 +73,11 @@ class JDCNet(nn.Module):
         self.detector = nn.Linear(in_features=512, out_features=2)  # (b * 31, 2) - binary classifier
 
     def forward(self, x):
+        """
+        Returns:
+            classification_prediction, detection_prediction
+            sizes: (b, 31, 722), (b, 31, 2)
+        """
         ###############################
         # forward pass for classifier #
         ###############################
@@ -108,15 +113,17 @@ class JDCNet(nn.Module):
 
         detector_out = detector_out.contiguous().view((-1, 512))
         detector_out = self.detector(detector_out)
-        detector_out = detector_out.view((-1, 31, 2))  # binary classifier
+        detector_out = detector_out.view((-1, 31, 2))  # binary classifier - (b, 31, 2)
 
         # add the pitch prediction values to determine the pitch existence from the classifier network
         pitch_pred, nonvoice_pred = torch.split(classifier_out, [self.num_class - 1, 1], dim=2)
+        # sum the 'pitch class' prediction values to represent 'isvoice?'
         classifier_detection = torch.cat(
             (torch.sum(pitch_pred, dim=2, keepdim=True), nonvoice_pred), dim=2)
         # add the classifier network's and detector network's values
-        detector_out = detector_out + classifier_detection
+        detector_out = detector_out + classifier_detection  # (b, 31, 2)
 
+        # sizes: (b, 31, 722), (b, 31, 2)
         return classifier_out, detector_out
 
 

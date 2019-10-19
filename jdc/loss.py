@@ -5,6 +5,9 @@ from .util import to_onehot, empty_onehot
 
 
 class CrossEntropyLossWithGaussianSmoothedLabels(nn.Module):
+    """
+    See Also: https://github.com/pytorch/pytorch/issues/7455
+    """
     def __init__(self, num_classes=722, blur_range=3):
         super().__init__()
         self.dim = -1

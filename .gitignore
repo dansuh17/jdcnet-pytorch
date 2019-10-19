@@ -2,6 +2,9 @@
 # output data directory
 out_root
 
+# tensorboard outputs
+runs
+
 ### ctags
 tags.lock
 tags

@@ -2,6 +2,7 @@
 # output data directory
 out_root
 data_out
+data_in
 
 # tensorboard outputs
 runs

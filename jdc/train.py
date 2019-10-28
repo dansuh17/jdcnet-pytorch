@@ -3,64 +3,66 @@ Train script for
 "Joint Detection and Classification of Singing Voice Melody
 Using Convolutional Recurrent Neural Networks" by Kum et al. (2019)
 """
+from typing import Union, Tuple
+
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from .dataset import MedleyDBMelodyDataset, SpecHz
+from torchland.trainer import NetworkTrainer, AttributeHolder, ModelInfo, TrainStage
+from .dataset import SpecHz
+from .medleydb_dataloader import MedleyDBDataLoaderBuilder
 from .model import JDCNet
 from .loss import CrossEntropyLossWithGaussianSmoothedLabels
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-num_class = 722
-total_epoch = 50
-batch_size = 5
-num_workers = 8
-detection_weight = 0.5
-writer = SummaryWriter()
+class JDCTrainer(NetworkTrainer):
+    def __init__(self):
+        super().__init__(epoch=100)
+        self.detection_weight = 0.5
+        self.num_class = 722
+        self.data_root = './out_root'
+        #self.batch_size = 64
+        self.batch_size = 5
+        self.num_workers = 8
+        self.lr_init = 3e-4
 
-loss_classification = CrossEntropyLossWithGaussianSmoothedLabels()
-loss_detection = nn.CrossEntropyLoss()
+        # setup
+        jdc_model = JDCNet()
+        input_size = (1, 31, 513)
+        self.add_model('jdc_net', jdc_model, input_size, metric='loss')
+        self.set_dataloader_builder(MedleyDBDataLoaderBuilder(
+            data_root=self.data_root, batch_size=self.batch_size, num_workers=self.num_workers))
+        self.add_criterion('loss_detection', nn.CrossEntropyLoss())
+        self.add_criterion('loss_classification', CrossEntropyLossWithGaussianSmoothedLabels())
+        self.add_optimizer('adam', torch.optim.Adam(jdc_model.parameters(), lr=self.lr_init))
 
-# spread the calculations over distributed cores
-model = torch.nn.parallel.DataParallel(JDCNet().to(device))
-
-optimizer = torch.optim.Adam(model.module.parameters(), lr=3e-4)
-
-dataset = MedleyDBMelodyDataset(root='./out_root')
-dataloader = DataLoader(
-    dataset, batch_size=batch_size,
-    shuffle=True, drop_last=True, pin_memory=True)
-
-global_step = 0
-for epoch in range(total_epoch):
-    for input_ in dataloader:
-        # parse inputs
+    def run_step(self, models: AttributeHolder[ModelInfo],
+                 criteria: AttributeHolder[nn.Module],
+                 optimizers,
+                 input_: Union[torch.Tensor, Tuple[torch.Tensor]],
+                 train_stage: TrainStage, *args, **kwargs):
         input_spec, target_labels, target_isvoice = input_
-        # out: (b, 1, 31, 513)
-        input_spec = input_spec.to(device).unsqueeze(dim=1)  # add an axis to feature dimension
-        target_labels = target_labels.to(device)  # size: (b, 31)
-        target_isvoice = target_isvoice.to(device)  # size: (b, 31)
+        # dimensions: (b, 1, 31, 513)
+        input_spec = input_spec.unsqueeze(dim=1)  # add an axis to feature dimension
 
-        out_classification, out_detection = model(input_spec)
-        classification_loss = loss_classification(out_classification, target_labels)
+        out_classification, out_detection = models.jdc_net.model(input_spec)
+        classification_loss = criteria.loss_classification(out_classification, target_labels)
 
         # (b, 31, 2) => (b, 2, 31)
         out_detection = out_detection.transpose(1, 2)
-        detection_loss = loss_detection(out_detection, target_isvoice)
+        detection_loss = criteria.loss_detection(out_detection, target_isvoice)
 
-        total_loss = classification_loss + detection_weight * detection_loss
+        total_loss = classification_loss + self.detection_weight * detection_loss
 
-        optimizer.zero_grad()
-        total_loss.backward()
-        optimizer.step()
+        adam = optimizers.adam
 
-        print(f'epoch: {epoch:03d}, step: {global_step:04d}, '
-              f'total_loss: {total_loss.data:04f}, class_loss: {classification_loss.data:04f}, '
-              f'detection_loss: {detection_loss.data:04f}')
-        writer.add_scalar('total_loss', total_loss.data, global_step)
-        writer.add_scalar('class_loss', classification_loss.data, global_step)
-        writer.add_scalar('detection_loss', detection_loss.data, global_step)
+        if train_stage == TrainStage.TRAIN:
+            adam.zero_grad()
+            total_loss.backward()
+            adam.step()
 
-        global_step += 1
+        return (out_classification, out_detection), total_loss
+
+
+if __name__ == '__main__':
+    jdc_trainer = JDCTrainer()
+    jdc_trainer.fit()

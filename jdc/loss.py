@@ -23,6 +23,7 @@ class CrossEntropyLossWithGaussianSmoothedLabels(nn.Module):
         return math.exp(-math.pow(2, dist) / (2 * math.pow(2, sigma)))
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
+        # TODO: improve this using log-sum-exp trick
         # target: (b, 31)
         pred_logit = torch.log_softmax(pred, dim=self.dim)
 
@@ -65,24 +66,25 @@ class CrossEntropyLossWithGaussianSmoothedLabels(nn.Module):
         return one_hot
 
 
-if __name__ == '__main__':
-    # TESTING GAUSSIAN BLUR
-    loss = CrossEntropyLossWithGaussianSmoothedLabels(num_classes=7)
-    print(loss.smoothed_label(torch.LongTensor(1, 4) % 7))
+def test_gaussian_blur():
     """
-    Example:
-    
     Before blurring:
-    
+
     tensor([[[0., 0., 0., 0., 1., 0., 0.],
              [0., 0., 1., 0., 0., 0., 0.],
              [1., 0., 0., 0., 0., 0., 0.],
              [0., 0., 0., 0., 1., 0., 0.]]])
-    
+
     After blurring:
-    
+
     tensor([[[0.0000, 0.1353, 0.3679, 0.6065, 1.0000, 0.6065, 0.3679],
              [0.3679, 0.6065, 1.0000, 0.6065, 0.3679, 0.1353, 0.0000],
              [1.0000, 0.6065, 0.3679, 0.1353, 0.0000, 0.0000, 0.0000],
              [0.0000, 0.1353, 0.3679, 0.6065, 1.0000, 0.6065, 0.3679]]])
     """
+    loss = CrossEntropyLossWithGaussianSmoothedLabels(num_classes=7)
+    print(loss.smoothed_label(torch.LongTensor(1, 4) % 7))
+
+
+if __name__ == '__main__':
+    test_gaussian_blur()

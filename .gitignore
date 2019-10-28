@@ -1,6 +1,7 @@
 ### Project Specifics
 # output data directory
 out_root
+data_out
 
 # tensorboard outputs
 runs

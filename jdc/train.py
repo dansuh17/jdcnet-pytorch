@@ -4,36 +4,59 @@ Train script for
 Using Convolutional Recurrent Neural Networks" by Kum et al. (2019)
 """
 from typing import Union, Tuple
+import json
 
 import torch
 from torch import nn
+from torch.utils.data import Dataset
 from torchland.trainer import NetworkTrainer, AttributeHolder, ModelInfo, TrainStage
-from .dataset import SpecHz
-from .medleydb_dataloader import MedleyDBDataLoaderBuilder
+from torchland.datasets.loader_builder import DefaultDataLoaderBuilder
+from .dataset import SpecHz, MedleyDBMelodyDataset
 from .model import JDCNet
 from .loss import CrossEntropyLossWithGaussianSmoothedLabels
 
 
+class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
+    def __init__(self, dataset: Dataset, *args, **kwargs):
+        super().__init__(dataset, *args, **kwargs)
+
+
 class JDCTrainer(NetworkTrainer):
-    def __init__(self):
+    def __init__(self, config: dict):
         super().__init__(epoch=100)
-        self.detection_weight = 0.5
-        self.num_class = 722
-        self.data_root = './out_root'
-        #self.batch_size = 64
-        self.batch_size = 5
-        self.num_workers = 8
-        self.lr_init = 3e-4
+        self.detection_weight = self.get_or_else(
+            config, 'detection_weight', default_value=0.5)
+        self.num_class = self.get_or_else(
+            config, 'num_class', default_value=722)
+        self.data_root = self.get_or_else(
+            config, 'data_root', default_value='./data_in/medleydb_melody')
+        self.batch_size = self.get_or_else(
+            config, 'batch_size', default_value=64)
+        self.num_workers = self.get_or_else(
+            config, 'num_workers', default_value=4)
+        self.lr_init = self.get_or_else(
+            config, 'lr_init', default_value=3e-4)
 
         # setup
         jdc_model = JDCNet()
         input_size = (1, 31, 513)
         self.add_model('jdc_net', jdc_model, input_size, metric='loss')
+
+        dataset = MedleyDBMelodyDataset(self.data_root)
         self.set_dataloader_builder(MedleyDBDataLoaderBuilder(
-            data_root=self.data_root, batch_size=self.batch_size, num_workers=self.num_workers))
+            dataset=dataset, batch_size=self.batch_size, num_workers=self.num_workers))
         self.add_criterion('loss_detection', nn.CrossEntropyLoss())
         self.add_criterion('loss_classification', CrossEntropyLossWithGaussianSmoothedLabels())
         self.add_optimizer('adam', torch.optim.Adam(jdc_model.parameters(), lr=self.lr_init))
+
+    @staticmethod
+    def get_or_else(config: dict, key: str, default_value):
+        if key in config:
+            val = config[key]
+        else:
+            val = default_value
+        print(f'Config - {key}: {val}')
+        return val
 
     def run_step(self, models: AttributeHolder[ModelInfo],
                  criteria: AttributeHolder[nn.Module],
@@ -64,5 +87,7 @@ class JDCTrainer(NetworkTrainer):
 
 
 if __name__ == '__main__':
-    jdc_trainer = JDCTrainer()
+    with open('config.json', 'r') as jsonf:
+        config = json.load(jsonf)
+    jdc_trainer = JDCTrainer(config)
     jdc_trainer.fit()

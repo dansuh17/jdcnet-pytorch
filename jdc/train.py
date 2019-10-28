@@ -23,7 +23,7 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 class JDCTrainer(NetworkTrainer):
     def __init__(self, config: dict):
-        super().__init__(epoch=100)
+        super().__init__(epoch=100, log_every_local=1)
         self.detection_weight = self.get_or_else(
             config, 'detection_weight', default_value=0.5)
         self.num_class = self.get_or_else(
@@ -58,6 +58,15 @@ class JDCTrainer(NetworkTrainer):
         print(f'Config - {key}: {val}')
         return val
 
+    @staticmethod
+    def make_performance_metric(input_: torch.Tensor, output, loss) -> dict:
+        total_loss, classification_loss, detection_loss = loss
+        return {
+            'total_loss': total_loss,
+            'classification_loss': classification_loss,
+            'detection_loss': detection_loss,
+        }
+
     def run_step(self, models: AttributeHolder[ModelInfo],
                  criteria: AttributeHolder[nn.Module],
                  optimizers,
@@ -83,7 +92,7 @@ class JDCTrainer(NetworkTrainer):
             total_loss.backward()
             adam.step()
 
-        return (out_classification, out_detection), total_loss
+        return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)
 
 
 if __name__ == '__main__':

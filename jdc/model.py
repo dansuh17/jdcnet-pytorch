@@ -72,6 +72,9 @@ class JDCNet(nn.Module):
         # input: (b * 31, 512)
         self.detector = nn.Linear(in_features=512, out_features=2)  # (b * 31, 2) - binary classifier
 
+        # initialize weights
+        self.apply(self.init_weights)
+
     def forward(self, x):
         """
         Returns:
@@ -125,6 +128,15 @@ class JDCNet(nn.Module):
 
         # sizes: (b, 31, 722), (b, 31, 2)
         return classifier_out, detector_out
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.kaiming_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Conv2d):
+            nn.init.xavier_normal_(m.weight)
 
 
 class ResBlock(nn.Module):

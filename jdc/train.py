@@ -29,7 +29,7 @@ class JDCTrainer(NetworkTrainer):
         self.num_class = self.get_or_else(
             config, 'num_class', default_value=722)
         self.data_root = self.get_or_else(
-            config, 'data_root', default_value='./data_in/medleydb_melody')
+            config, 'data_root', default_value='./data_in/medleydb_melody_jdc/medleydb_melody')
         self.batch_size = self.get_or_else(
             config, 'batch_size', default_value=64)
         self.num_workers = self.get_or_else(

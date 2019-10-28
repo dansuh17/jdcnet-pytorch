@@ -23,15 +23,23 @@ class CrossEntropyLossWithGaussianSmoothedLabels(nn.Module):
         return math.exp(-math.pow(2, dist) / (2 * math.pow(2, sigma)))
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor):
-        # TODO: improve this using log-sum-exp trick
+        # pred: (b, 31, 722)
         # target: (b, 31)
+
         pred_logit = torch.log_softmax(pred, dim=self.dim)
 
         # out: (b, 31, 722)
         target_smoothed = self.smoothed_label(target)
 
-        # calculate the cross entropy loss
-        return torch.mean(torch.sum(- pred_logit * target_smoothed, dim=self.dim))
+        # calculate the 'cross entropy' for each of 31 features
+        # TODO: use torch.nll_loss() instead?
+        """
+        pred: (b, 722, 31)
+        target: (b, 31)
+        nll_loss(input=pred, target=target, reduction='mean')
+        """
+        target_loss_sum = torch.sum(-pred_logit * target_smoothed, dim=self.dim)
+        return torch.mean(target_loss_sum)  # and then take their mean
 
     def smoothed_label(self, target: torch.Tensor):
         # out: (b, 31, 722)

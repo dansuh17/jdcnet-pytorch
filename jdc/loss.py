@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.nn import functional as F
 import math
 from .util import to_onehot, empty_onehot
 

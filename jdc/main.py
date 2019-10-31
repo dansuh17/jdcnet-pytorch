@@ -2,6 +2,7 @@ import json
 from .train import JDCTrainer
 from .dataset import SpecHz
 
+
 # load configuration file
 with open('config.json', 'r') as jsonf:
     config = json.load(jsonf)

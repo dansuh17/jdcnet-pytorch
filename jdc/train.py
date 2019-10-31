@@ -23,7 +23,7 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 class JDCTrainer(NetworkTrainer):
     def __init__(self, config: dict):
-        super().__init__(epoch=100, log_every_local=1)
+        super().__init__(epoch=100, log_every_local=1, save_histogram=True)
         self.detection_weight = self.get_or_else(
             config, 'detection_weight', default_value=0.5)
         self.num_class = self.get_or_else(
@@ -35,7 +35,7 @@ class JDCTrainer(NetworkTrainer):
         self.num_workers = self.get_or_else(
             config, 'num_workers', default_value=4)
         self.lr_init = self.get_or_else(
-            config, 'lr_init', default_value=3e-4)
+            config, 'lr_init', default_value=1e-5)
 
         # setup
         jdc_model = JDCNet()

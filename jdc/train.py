@@ -76,7 +76,8 @@ class JDCTrainer(NetworkTrainer):
         # dimensions: (b, 1, 31, 513)
         input_spec = input_spec.unsqueeze(dim=1)  # add an axis to feature dimension
 
-        out_classification, out_detection = models.jdc_net.model(input_spec)
+        model = models.jdc_net.model
+        out_classification, out_detection = model(input_spec)
         classification_loss = criteria.loss_classification(out_classification, target_labels)
 
         # (b, 31, 2) => (b, 2, 31)
@@ -92,6 +93,10 @@ class JDCTrainer(NetworkTrainer):
             total_loss.backward()
             adam.step()
 
+        # clip gradients to prevent gradient explosion for LSTM modules
+        torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
+        torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
+
         return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)
 
 
@@ -99,4 +104,6 @@ if __name__ == '__main__':
     with open('config.json', 'r') as jsonf:
         config = json.load(jsonf)
     jdc_trainer = JDCTrainer(config)
-    jdc_trainer.fit()
+    print(jdc_trainer._models.jdc_net.model.module.bilstm_classifier.parameters())
+    print(jdc_trainer._models.jdc_net.model.module.parameters())
+    # jdc_trainer.fit()

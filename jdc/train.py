@@ -94,8 +94,9 @@ class JDCTrainer(NetworkTrainer):
             adam.step()
 
         # clip gradients to prevent gradient explosion for LSTM modules
-        torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
-        torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
+        #torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
+        #torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
+        torch.nn.utils.clip_grad_norm_(model.module.parameters(), max_norm=0.25)
 
         return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)
 

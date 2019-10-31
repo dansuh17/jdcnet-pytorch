@@ -137,6 +137,15 @@ class JDCNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.Conv2d):
             nn.init.xavier_normal_(m.weight)
+        elif isinstance(m, nn.LSTM) or isinstance(m, nn.LSTMCell):
+            for p in m.parameters():
+                if p.data is None:
+                    continue
+
+                if len(p.shape) >= 2:
+                    nn.init.orthogonal_(p.data)
+                else:
+                    nn.init.normal_(p.data)
 
 
 class ResBlock(nn.Module):

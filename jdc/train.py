@@ -47,7 +47,9 @@ class JDCTrainer(NetworkTrainer):
             dataset=dataset, batch_size=self.batch_size, num_workers=self.num_workers))
         self.add_criterion('loss_detection', nn.CrossEntropyLoss())
         self.add_criterion('loss_classification', CrossEntropyLossWithGaussianSmoothedLabels())
-        self.add_optimizer('adam', torch.optim.Adam(jdc_model.parameters(), lr=self.lr_init))
+
+        adam = torch.optim.Adam(jdc_model.parameters(), lr=self.lr_init, weight_decay=1e-4)
+        self.add_optimizer('adam', adam)
 
     @staticmethod
     def get_or_else(config: dict, key: str, default_value):
@@ -94,8 +96,8 @@ class JDCTrainer(NetworkTrainer):
             adam.step()
 
         # clip gradients to prevent gradient explosion for LSTM modules
-        #torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
-        #torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
+        # torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
+        # torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
         torch.nn.utils.clip_grad_norm_(model.module.parameters(), max_norm=0.25)
 
         return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)

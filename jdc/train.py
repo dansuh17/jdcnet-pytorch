@@ -42,6 +42,9 @@ class JDCTrainer(NetworkTrainer):
         input_size = (1, 31, 513)
         self.add_model('jdc_net', jdc_model, input_size, metric='loss')
 
+        for p in jdc_model.parameters():
+            p.register_hook(lambda grad: torch.clamp(grad, min=-1.0, max=1.0))
+
         dataset = MedleyDBMelodyDataset(self.data_root)
         self.set_dataloader_builder(MedleyDBDataLoaderBuilder(
             dataset=dataset, batch_size=self.batch_size, num_workers=self.num_workers))
@@ -97,7 +100,9 @@ class JDCTrainer(NetworkTrainer):
             # clip gradients to prevent gradient explosion for LSTM modules
             # torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
             # torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
-            torch.nn.utils.clip_grad_value_(model.module.parameters(), clip_value=1.0)
+            # torch.nn.utils.clip_grad_value_(model.module.parameters(), clip_value=1.0)
+
+
             adam.step()
 
         return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)
@@ -108,5 +113,6 @@ if __name__ == '__main__':
         config = json.load(jsonf)
     jdc_trainer = JDCTrainer(config)
     print(jdc_trainer._models.jdc_net.model.module.bilstm_classifier.parameters())
-    print(jdc_trainer._models.jdc_net.model.module.parameters())
-    # jdc_trainer.fit()
+    for p in jdc_trainer._models.jdc_net.model.module.named_parameters():
+        print(p[0])
+    jdc_trainer.fit()

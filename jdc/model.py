@@ -53,7 +53,7 @@ class JDCNet(nn.Module):
             nn.Conv2d(640, 256, 1, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(leaky_relu_slope, inplace=True),
-            nn.Dropout(p=0.5)
+            nn.Dropout(p=0.5),
         )
 
         # input: (b, 31, 512) - resized from (b, 256, 31, 2)

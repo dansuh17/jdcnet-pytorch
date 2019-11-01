@@ -88,7 +88,7 @@ class PitchLabeler:
 
 def medleydb_preprocess(
         source_info: SourceInfo, out_root: str,
-        pitch_labeler: PitchLabeler, target_sr=8000):
+        pitch_labeler: PitchLabeler, target_sr=8000, eps=1e-10):
     """
     Preprocess a single source of MedleyDB mix and generates chunked data.
 
@@ -97,6 +97,8 @@ def medleydb_preprocess(
         out_root(str): output directory to save the resulting file
         target_sr(int): target sample rate
         pitch_labeler(PitchLabeler): pitch labeler
+        eps(float): epsilon value to be added to magnitude spectrogram where values are 0,
+            which will otherwise cause NaN in the log-magnitude spectrogram.
 
     Returns:
         spec_hz(SpecHz): includes chunked spectrogram, labeled pitches, and metadata
@@ -109,10 +111,14 @@ def medleydb_preprocess(
     y, sr = librosa.load(source_info.audio_path)
     y_resamp = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
 
-    mag_spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
-    log_mag = np.log(np.abs(mag_spec))
+    spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
+    mag_spec = np.abs(spec)
+    # set epsilon where value is 0 - which will cause NaN in the log-magnitude spectrogram
+    mag_spec[mag_spec == 0] = eps
+    log_mag = np.log(mag_spec)
     num_frames = log_mag.shape[1]
 
+    # calculate the elapsed time for each frame index
     frame_indices = np.arange(num_frames)
     frame_times = librosa.core.frames_to_time(frame_indices, sr=target_sr, hop_length=80, n_fft=1024)
 
@@ -121,6 +127,10 @@ def medleydb_preprocess(
 
     assert(len(pitch_labels) == num_frames)
     assert(len(isvoice) == num_frames)
+
+    # check data sanity
+    assert(not np.any(np.isnan(log_mag)))
+    assert(np.all(np.isfinite(log_mag)))
 
     # split the spectrogram in chunks
     for start_idx in range(0, num_frames, chunk_size):
@@ -151,8 +161,8 @@ def get_melody_labels_by_frame(
 
     num_frames = len(frame_times)
 
-    labels = []
-    isvoice = []
+    labels = []  # array of pitch labels (integer values)
+    isvoice = []  # array of bools saying whethere there is a voice
     for start_idx in range(num_frames):
         start_time = frame_times[start_idx]
         if start_idx + 1 >= num_frames:

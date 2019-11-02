@@ -23,7 +23,7 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 class JDCTrainer(NetworkTrainer):
     def __init__(self, config: dict):
-        super().__init__(epoch=100, log_every_local=20)
+        super().__init__(epoch=config['epoch'], log_every_local=config['log_every_local'])
         self.detection_weight = self.get_or_else(
             config, 'detection_weight', default_value=0.5)
         self.num_class = self.get_or_else(
@@ -53,10 +53,7 @@ class JDCTrainer(NetworkTrainer):
 
     @staticmethod
     def get_or_else(config: dict, key: str, default_value):
-        if key in config:
-            val = config[key]
-        else:
-            val = default_value
+        val = config[key] if key in config else default_value
         print(f'Config - {key}: {val}')
         return val
 

@@ -229,11 +229,14 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
     """
     source_infos = read_source_infos(in_root, metadata_path)
     pitch_labeler = PitchLabeler()
-    for si in source_infos:
-        print(f'Preprocessing: {si.fname}')
+    num_sources = len(source_infos)
+
+    count = 0
+    for i, si in enumerate(source_infos):
+        print(f'Preprocessing: {si.fname} ({i + 1} / {num_sources})')
         for spec_hz in medleydb_preprocess(si, out_root, pitch_labeler):
             out_path = os.path.join(out_root, f'{spec_hz.name}_{spec_hz.start_idx}.pkl')
-            print(f'Saving: {out_path}')
+            print(f'Saving: {out_path}, count: {count}')
             with open(out_path, 'wb') as wf:
                 pickle.dump(spec_hz, wf)
 

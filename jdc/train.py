@@ -23,7 +23,7 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 class JDCTrainer(NetworkTrainer):
     def __init__(self, config: dict):
-        super().__init__(epoch=100, log_every_local=1, save_histogram=True)
+        super().__init__(epoch=100, log_every_local=20)
         self.detection_weight = self.get_or_else(
             config, 'detection_weight', default_value=0.5)
         self.num_class = self.get_or_else(
@@ -41,9 +41,6 @@ class JDCTrainer(NetworkTrainer):
         jdc_model = JDCNet()
         input_size = (1, 31, 513)
         self.add_model('jdc_net', jdc_model, input_size, metric='loss')
-
-        for p in jdc_model.parameters():
-            p.register_hook(lambda grad: torch.clamp(grad, min=-1.0, max=1.0))
 
         dataset = MedleyDBMelodyDataset(self.data_root)
         self.set_dataloader_builder(MedleyDBDataLoaderBuilder(
@@ -97,14 +94,8 @@ class JDCTrainer(NetworkTrainer):
             adam.zero_grad()
             total_loss.backward()
 
-            params = model.module.named_parameters()
-            for n, p in params:
-                print(n, p.grad.mean(), p.grad.max(), p.grad.min())
             # clip gradients to prevent gradient explosion for LSTM modules
-            # torch.nn.utils.clip_grad_norm_(model.module.bilstm_classifier.parameters(), max_norm=0.25)
-            # torch.nn.utils.clip_grad_norm_(model.module.bilstm_detector.parameters(), max_norm=0.25)
-            # torch.nn.utils.clip_grad_value_(model.module.parameters(), clip_value=1.0)
-
+            torch.nn.utils.clip_grad_value_(model.module.parameters(), clip_value=0.25)
             adam.step()
 
         return (out_classification, out_detection), (total_loss, classification_loss, detection_loss)
@@ -114,7 +105,4 @@ if __name__ == '__main__':
     with open('config.json', 'r') as jsonf:
         config = json.load(jsonf)
     jdc_trainer = JDCTrainer(config)
-    print(jdc_trainer._models.jdc_net.model.module.bilstm_classifier.parameters())
-    for p in jdc_trainer._models.jdc_net.model.module.named_parameters():
-        print(p[0])
     jdc_trainer.fit()

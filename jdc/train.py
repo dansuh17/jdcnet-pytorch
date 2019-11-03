@@ -22,7 +22,8 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 class JDCTrainer(NetworkTrainer):
     def __init__(self, config: dict):
-        super().__init__(epoch=config['epoch'], log_every_local=config['log_every_local'])
+        super().__init__(epoch=self.get_or_else(config, 'epoch', 100),
+                         log_every_local=self.get_or_else(config, 'log_every_local', 20))
         self.detection_weight = self.get_or_else(
             config, 'detection_weight', default_value=0.5)
         self.num_class = self.get_or_else(

@@ -5,7 +5,6 @@ Using Convolutional Recurrent Neural Networks" by Kum et al. (2019)
 """
 from typing import Union, Tuple
 import json
-
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -65,6 +64,32 @@ class JDCTrainer(NetworkTrainer):
             'classification_loss': classification_loss,
             'detection_loss': detection_loss,
         }
+
+    def post_step(
+            self, input, output, metric: dict,
+            dataset_size: int, train_stage: TrainStage):
+        super().post_step(input, output, metric, dataset_size, train_stage)
+
+        if self._local_step % self._log_every_local == 0:
+            _, target_labels, target_isvoice = input
+            numel = float(target_isvoice.numel())
+
+            # log the ratio of 'isvoice'
+            isvoice_ratio = float(target_isvoice.sum().data) / numel
+            self._writer.add_scalar(f'isvoice_ratio', isvoice_ratio, self._global_step)
+
+            # (b, num_frames)
+            batch_size = target_labels.size()[0]
+            num_frames = target_labels.size()[1]
+            for frame_idx in range(num_frames):
+                scalars = {}
+                for samp_idx in range(batch_size):
+                    scalars[f's{samp_idx}'] = target_labels[samp_idx][frame_idx]
+
+                self._writer.add_scalars(
+                    main_tag=f'melody_e{self._epoch}',
+                    tag_scalar_dict=scalars,
+                    global_step=self._global_step)
 
     def run_step(self, models: AttributeHolder[ModelInfo],
                  criteria: AttributeHolder[nn.Module],

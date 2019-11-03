@@ -82,7 +82,7 @@ class JDCTrainer(NetworkTrainer):
             # (b, num_frames)
             batch_size = target_labels.size()[0]
             num_frames = target_labels.size()[1]
-            for samp_idx in range(batch_size[:5]):
+            for samp_idx in range(3):
                 # (1, 31, 722)
                 one_hot = torch.FloatTensor(1, num_frames, 722).zero_().to(self._device)
                 # labels: (1, 31, 1)

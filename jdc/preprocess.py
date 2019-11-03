@@ -164,6 +164,7 @@ def get_melody_labels_by_frame(
     labels = []  # array of pitch labels (integer values)
     isvoice = []  # array of bools saying whethere there is a voice
     for start_idx in range(num_frames):
+        # determine the start / end times and choose the melody in the interval
         start_time = frame_times[start_idx]
         if start_idx + 1 >= num_frames:
             melody_part = df_melody[df_melody['sec'] > start_time]
@@ -173,6 +174,7 @@ def get_melody_labels_by_frame(
 
         melody_part_pitched = melody_part[melody_part['hz'] > 0.1]
 
+        # no pitched melody exists in this chunk
         if len(melody_part_pitched) == 0:
             label = pitch_labeler.label_nonvoice
             voice = False
@@ -235,6 +237,7 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
     for i, si in enumerate(source_infos):
         print(f'Preprocessing: {si.fname} ({i + 1} / {num_sources})')
         for spec_hz in medleydb_preprocess(si, out_root, pitch_labeler):
+            count += 1
             out_path = os.path.join(out_root, f'{spec_hz.name}_{spec_hz.start_idx}.pkl')
             print(f'Saving: {out_path}, count: {count}')
             with open(out_path, 'wb') as wf:

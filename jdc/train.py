@@ -81,14 +81,16 @@ class JDCTrainer(NetworkTrainer):
             # (b, num_frames)
             batch_size = target_labels.size()[0]
             num_frames = target_labels.size()[1]
-            for frame_idx in range(num_frames):
-                scalars = {}
-                for samp_idx in range(batch_size):
-                    scalars[f's{samp_idx}'] = target_labels[samp_idx][frame_idx]
-
-                self._writer.add_scalars(
-                    main_tag=f'melody_e{self._epoch}',
-                    tag_scalar_dict=scalars,
+            for samp_idx in range(batch_size[:5]):
+                # (1, 31, 722)
+                one_hot = torch.FloatTensor(1, num_frames, 722).zero_().to(self._device)
+                # labels: (1, 31, 1)
+                labels = torch.unsqueeze(torch.unsqueeze(target_labels[samp_idx], dim=0), dim=2)
+                # one_hot: (1, 31, 722) => (1, 722, 31)
+                one_hot = one_hot.scatter_(dim=2, index=labels, value=1.0).transpose(1, 2)
+                self._writer.add_image(
+                    f'image_{self._epoch}/s{samp_idx}',
+                    one_hot,
                     global_step=self._global_step)
 
     def run_step(self, models: AttributeHolder[ModelInfo],

@@ -2,9 +2,10 @@
   "batch_size": 4,
   "num_class": 722,
   "data_root": "./data_in/medleydb_melody",
-  "lr_init": 1e-5,
+  "lr_init": 3e-4,
   "num_workers": 8,
   "detection_weight": 0.5,
   "log_every_local": 20,
+  "lr_decay_step": 40,
   "epoch": 100
 }

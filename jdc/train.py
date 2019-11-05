@@ -8,7 +8,7 @@ import json
 import torch
 from torch import nn
 from torch.utils.data import Dataset
-from torchland.trainer import NetworkTrainer, AttributeHolder, ModelInfo, TrainStage
+from torchland.trainer.trainer import NetworkTrainer, AttributeHolder, ModelInfo, TrainStage
 from torchland.datasets.loader_builder import DefaultDataLoaderBuilder
 from .dataset import SpecHz, MedleyDBMelodyDataset
 from .model import JDCNet
@@ -35,7 +35,9 @@ class JDCTrainer(NetworkTrainer):
         self.num_workers = self.get_or_else(
             config, 'num_workers', default_value=4)
         self.lr_init = self.get_or_else(
-            config, 'lr_init', default_value=1e-5)
+            config, 'lr_init', default_value=3e-4)
+        self.lr_decay_step = self.get_or_else(
+            config, 'lr_decay_step', default_value=40)
 
         # setup
         jdc_model = JDCNet()
@@ -43,13 +45,15 @@ class JDCTrainer(NetworkTrainer):
         self.add_model('jdc_net', jdc_model, input_size, metric='loss')
 
         dataset = MedleyDBMelodyDataset(self.data_root)
-        self.set_dataloader_builder(MedleyDBDataLoaderBuilder(
+        self.set_dataloaders(MedleyDBDataLoaderBuilder(
             dataset=dataset, batch_size=self.batch_size, num_workers=self.num_workers))
         self.add_criterion('loss_detection', nn.CrossEntropyLoss())
         self.add_criterion('loss_classification', CrossEntropyLossWithGaussianSmoothedLabels())
 
         adam = torch.optim.Adam(jdc_model.parameters(), lr=self.lr_init, weight_decay=1e-4)
         self.add_optimizer('adam', adam)
+        adam_steplr = torch.optim.lr_scheduler.StepLR(adam, step_size=40)
+        self.add_lr_scheduler('steplr', adam_steplr)
 
     @staticmethod
     def get_or_else(config: dict, key: str, default_value):
@@ -77,7 +81,7 @@ class JDCTrainer(NetworkTrainer):
 
             # log the ratio of 'isvoice'
             isvoice_ratio = float(target_isvoice.sum().data) / numel
-            self._writer.add_scalar(f'isvoice_ratio', isvoice_ratio, self._global_step)
+            self._writer.add_scalar('isvoice_ratio', isvoice_ratio, self._global_step)
 
             # (b, num_frames)
             batch_size = target_labels.size()[0]

@@ -110,7 +110,7 @@ class JDCTrainer(NetworkTrainer):
             dataset_size: int, train_stage: TrainStage):
         super().post_step(input, output, metric, dataset_size, train_stage)
 
-        if self._local_step % self._log_every_local != 0:
+        if self._local_step % 500 != 0:
             return
 
         # log the melody contour
@@ -133,7 +133,7 @@ class JDCTrainer(NetworkTrainer):
 
         # log the predicted /
         default_numsamps = 3  # use default of three examples
-        num_samples = max(batch_size, default_numsamps)
+        num_samples = min(batch_size, default_numsamps)
         for samp_idx in range(num_samples):
             for t in range(num_frames):
                 tag_name = f'melody_e{self._epoch}_s{self._global_step}_i{samp_idx}'

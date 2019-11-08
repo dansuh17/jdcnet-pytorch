@@ -2,8 +2,8 @@ import torch
 
 
 def empty_onehot(target: torch.Tensor, num_classes: int):
-    # target_size = (batch, dim1, dim2)
-    # one_hot size = (batch, dim1, dim2, num_classes)
+    # target_size = (batch, dim1, dim2, ...)
+    # one_hot size = (batch, dim1, dim2, ..., num_classes)
     onehot_size = target.size() + (num_classes, )
     return torch.FloatTensor(*onehot_size).zero_()
 

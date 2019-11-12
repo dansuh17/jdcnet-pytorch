@@ -127,6 +127,8 @@ class JDCNet(nn.Module):
         detector_out = detector_out + classifier_detection  # (b, 31, 2)
 
         # sizes: (b, 31, 722), (b, 31, 2)
+        # classifier output consists of predicted pitch classes per frame
+        # detector output consists of: (isvoice, notvoice) estimates per frame
         return classifier_out, detector_out
 
     @staticmethod

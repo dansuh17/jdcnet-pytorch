@@ -80,7 +80,7 @@ class JDCTrainer(NetworkTrainer):
 
         model = models.jdc_net.model
 
-        # forward-propagate
+        # forward
         out_classification, out_detection = model(input_spec)
 
         # loss for pitch class classification
@@ -117,13 +117,13 @@ class JDCTrainer(NetworkTrainer):
         _, target_labels, target_isvoice = input
 
         # retrieve inputs
-        # target_labels: (b, num_frames)
+        # target_labels: (batch, num_frames)
         batch_size, num_frames = target_labels.size()
 
         # retrieve outputs
         out_classification = output[0]
         # find the predicted pitch class by taking the argmax of classification output
-        # out_classification: (b, num_frames, num_classes)
+        # out_classification: (batch, num_frames, num_classes)
         _, pred_classes = out_classification.max(dim=2)
 
         # log the ratio of 'isvoice'

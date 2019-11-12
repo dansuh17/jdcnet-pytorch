@@ -6,6 +6,7 @@ import librosa
 import numpy as np
 import pandas as pd
 from .dataset import SpecHz
+from .util import log_magnitude_spectrogram
 
 
 # represents metadata for single source (mix) - used for preprocessing MedleyDB dataset
@@ -87,40 +88,32 @@ class PitchLabeler:
 
 
 def medleydb_preprocess(
-        source_info: SourceInfo, out_root: str,
-        pitch_labeler: PitchLabeler, target_sr=8000, eps=1e-10):
+        source_info: SourceInfo, pitch_labeler: PitchLabeler,
+        chunk_size=31, target_sr=8000, n_fft=1024, hop_length=80, win_length=1024):
     """
     Preprocess a single source of MedleyDB mix and generates chunked data.
 
     Args:
         source_info(SourceInfo): source audio information
-        out_root(str): output directory to save the resulting file
-        target_sr(int): target sample rate
         pitch_labeler(PitchLabeler): pitch labeler
-        eps(float): epsilon value to be added to magnitude spectrogram where values are 0,
-            which will otherwise cause NaN in the log-magnitude spectrogram.
+        chunk_size(int): number of frames to cut the spectrogram into
+        target_sr(int): target sample rate
+        n_fft(int): number off fft bins
+        hop_length(int): hop length for windowing in stft
+        win_length(int): window length for stft
 
     Returns:
         spec_hz(SpecHz): includes chunked spectrogram, labeled pitches, and metadata
     """
-    chunk_size = 31
-
-    os.makedirs(out_root, exist_ok=True)
-
-    # load and resample
-    y, sr = librosa.load(source_info.audio_path)
-    y_resamp = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
-
-    spec = librosa.stft(y_resamp, n_fft=1024, hop_length=80, win_length=1024)
-    mag_spec = np.abs(spec)
-    # set epsilon where value is 0 - which will cause NaN in the log-magnitude spectrogram
-    mag_spec[mag_spec == 0] = eps
-    log_mag = np.log(mag_spec)
+    # load audio and convert to log-magnitude spectrogram
+    log_mag = log_magnitude_spectrogram(
+        source_info.audio_path, target_sr, n_fft, hop_length, win_length)
     num_frames = log_mag.shape[1]
 
     # calculate the elapsed time for each frame index
     frame_indices = np.arange(num_frames)
-    frame_times = librosa.core.frames_to_time(frame_indices, sr=target_sr, hop_length=80, n_fft=1024)
+    frame_times = librosa.core.frames_to_time(
+        frame_indices, sr=target_sr, hop_length=hop_length, n_fft=n_fft)
 
     pitch_labels, isvoice = get_melody_labels_by_frame(
         source_info, pitch_labeler, frame_times)
@@ -189,7 +182,7 @@ def get_melody_labels_by_frame(
 
 def read_source_infos(root: str, metadata_path: str):
     """
-    Read MedleyDB data items from
+    Read MedleyDB data items from dataset root directory.
 
     Args:
         root(str): data root
@@ -236,7 +229,7 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
     count = 0
     for i, si in enumerate(source_infos):
         print(f'Preprocessing: {si.fname} ({i + 1} / {num_sources})')
-        for spec_hz in medleydb_preprocess(si, out_root, pitch_labeler):
+        for spec_hz in medleydb_preprocess(si, pitch_labeler):
             count += 1
             out_path = os.path.join(out_root, f'{spec_hz.name}_{spec_hz.start_idx}.pkl')
             print(f'Saving: {out_path}, count: {count}')

@@ -1,8 +1,8 @@
 # JDCNet-pytorch
 
 This is a [PyTorch](https://pytorch.org/) re-implementation of 
-Kum et al. - "Joint Detection and Classification of 
-Singing Voice Melody Using Convolutional Recurrent Neural Networks" (2019).
+_Kum et al. - "Joint Detection and Classification of 
+Singing Voice Melody Using Convolutional Recurrent Neural Networks" (2019)_.
 The proposed neural network model will be called **JDCNet** for convenience.
 
 - **paper**: [PDF](https://www.mdpi.com/2076-3417/9/7/1324)
@@ -67,7 +67,7 @@ Default configuration file with default parameters are provided as `default_conf
 In order to start training, run the script `train.py`.
 
 ```shell
-./train.py --config <your_config>.json
+./train.py --config default_config.json
 ```
 
 # Singing voice melody extraction
@@ -75,5 +75,5 @@ In order to start training, run the script `train.py`.
 You can generate a MIDI file containing singing voice melody 
 
 ```shell
-./extract_melody.py --model ./<path>/<to>/<model>.pth --input_audio <input_audio>.wav
+./extract_melody.py --model example_model/jdcnet_model.pth --input_audio <your_audio>.wav
 ```

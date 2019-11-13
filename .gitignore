@@ -7,6 +7,13 @@ data_in
 # tensorboard outputs
 runs
 
+# audio files / midi files
+*.wav
+*.mp3
+*.mp4
+*.mid
+*.midi
+
 ### ctags
 tags.lock
 tags

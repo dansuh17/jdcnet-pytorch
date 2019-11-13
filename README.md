@@ -72,7 +72,7 @@ In order to start training, run the script `train.py`.
 
 # Singing voice melody extraction
 
-You can generate a MIDI file containing singing voice melody 
+You can generate a MIDI file containing extracted singing voice melody using a pretrained model.
 
 ```shell
 ./extract_melody.py --model example_model/jdcnet_model.pth --input_audio <your_audio>.wav

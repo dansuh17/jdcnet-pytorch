@@ -131,24 +131,54 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
     microsecs_per_tick = tempo / mid.ticks_per_beat
     assert(len(melody) == len(timestamps))
 
+    max_note_length = int(0.2 * 1e6 / microsecs_per_tick)
+
     prev_time = 0
     curr_note = -1
+    prev_note_value = 0
     for midi_note, time in zip(melody, timestamps):
         midi_note = int(midi_note)
 
         if curr_note != midi_note:
-            if curr_note != -1:
-                track.append(Message('note_off', note=curr_note, velocity=64, time=0))
-                print(f'msg=NOTE_OFF, midi={curr_note}, time={time}, tick=0')
-
-            if midi_note != -1:
+            if curr_note == -1:
+                # no note -> note on
                 delta_time = time - prev_time
                 prev_time = time
+
                 # calculate the 'tick' time from delta time
                 ticks = int(delta_time * 1e6 / microsecs_per_tick)
-                track.append(Message('note_on', note=midi_note, velocity=64, time=ticks))
+
+                off_tick = min(ticks, max_note_length)
+                print(f'msg=NOTE_OFF, midi={curr_note}, time={time}, tick={off_tick}')
+                track.append(Message('note_off', note=prev_note_value, velocity=64, time=off_tick))
+                on_tick = ticks - off_tick
+                print(f'msg=MIDI_ON, midi={midi_note}, time={time}, tick={on_tick}')
+                track.append(Message('note_on', note=midi_note, velocity=64, time=on_tick))
+            elif midi_note == -1:
+                # note on -> note off
+                # we don't create 'note off' message now - we determine the
+                # note length when the a note gets turned on again
+                prev_note_value = curr_note
+            else:
+                # note on -> different note on
+                delta_time = time - prev_time
+                prev_time = time
+
+                # calculate the 'tick' time from delta time
+                ticks = int(delta_time * 1e6 / microsecs_per_tick)
+
+                print(f'msg=NOTE_OFF, midi={curr_note}, time={time}, tick={ticks}')
+                track.append(Message('note_off', note=curr_note, velocity=64, time=ticks))
                 print(f'msg=MIDI_ON, midi={midi_note}, time={time}, tick={ticks}')
+                track.append(Message('note_on', note=midi_note, velocity=64, time=0))
 
         curr_note = midi_note
     mid.save(output_file)
     print(f'MIDI file saved to {output_file}')
+
+
+if __name__ == '__main__':
+    with open('gangnam_style', 'rb') as f:
+        m, t = pickle.load(f)
+
+    save_midi(m, t, output_file='test.mid')

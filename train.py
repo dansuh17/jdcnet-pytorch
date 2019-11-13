@@ -10,9 +10,11 @@ a.k.a "JDCNet"
 import argparse
 import json
 from jdc.train import JDCTrainer
+from jdc.dataset import SpecHz
 
 parser = argparse.ArgumentParser(description='Train JDCNet')
-parser.add_argument('-c', '--config', type=str, default='config.json', help='config file')
+parser.add_argument('-c', '--config', type=str,
+                    default='default_config.json', help='config file')
 args = parser.parse_args()
 
 # read configuration file and start training

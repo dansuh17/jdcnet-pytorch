@@ -5,8 +5,8 @@ Kum et al. - "Joint Detection and Classification of
 Singing Voice Melody Using Convolutional Recurrent Neural Networks" (2019).
 The proposed neural network model will be called **JDCNet** for convenience.
 
-**paper**: [PDF](https://www.mdpi.com/2076-3417/9/7/1324)
-**original Keras implementation**: [melodyExtraction_JDC](https://github.com/keums/melodyExtraction_JDC)
+- **paper**: [PDF](https://www.mdpi.com/2076-3417/9/7/1324)
+- **original Keras implementation**: [melodyExtraction_JDC](https://github.com/keums/melodyExtraction_JDC)
 
 This is an attempt of implementing JDCNet as close as possible with the original paper.
 Any ambiguities in implementation details have been filled in by my own decisions,
@@ -40,7 +40,7 @@ The pitch classification is done using a convolutional network with a bidirectio
 Intermediate features for pitch classifier are utilized by the auxiliary detector network, 
 also a BiLSTM module, to aid the determination of voice existence.
 
-The input is a log-magnitude spectrogram chunk that consist of 31 frames and 513 frequency bins.
+The input is a log-magnitude spectrogram chunk that consists of 31 frames and 513 frequency bins.
 
 The model predicts whether or not the voice exists for each frame, giving a `(31 x 2)` tensor output,
 and classifies the pitch into one of 722 classes that represent 721 different frequencies 

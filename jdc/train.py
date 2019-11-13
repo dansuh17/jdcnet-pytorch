@@ -147,7 +147,7 @@ class JDCTrainer(NetworkTrainer):
 
 
 if __name__ == '__main__':
-    with open('config.json', 'r') as jsonf:
+    with open('default_config.json', 'r') as jsonf:
         config = json.load(jsonf)
     jdc_trainer = JDCTrainer(config)
     jdc_trainer.fit()

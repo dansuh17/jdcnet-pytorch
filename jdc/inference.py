@@ -118,7 +118,7 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
             Value of `-1` represents 'no note'
         timestamps(list[float]): timestamps for each frames.
             Must have same length as `melody`.
-        name(str): midi file name
+        output_file(str): midi file path
     """
     mid = MidiFile()
     track = MidiTrack()
@@ -144,6 +144,7 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
             if midi_note != -1:
                 delta_time = time - prev_time
                 prev_time = time
+                # calculate the 'tick' time from delta time
                 ticks = int(delta_time * 1e6 / microsecs_per_tick)
                 track.append(Message('note_on', note=midi_note, velocity=64, time=ticks))
                 print(f'msg=MIDI_ON, midi={midi_note}, time={time}, tick={ticks}')
@@ -151,12 +152,3 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
         curr_note = midi_note
     mid.save(output_file)
     print(f'MIDI file saved to {output_file}')
-
-
-if __name__ == '__main__':
-    model = read_jdc_model('./best/model/e051_JDCNet.pth')
-    print(model)
-
-    # mymelody, timestamps = extract_melody('FacesOnFilm_WaitingForGa_MIX.wav', model, PitchLabeler())
-    # mymelody, timestamps = extract_melody('gangnam_style.wav', model, PitchLabeler(), save_to='gangnam_style')
-    # save_midi(mymelody, timestamps, output_file='gangnam_style.mid')

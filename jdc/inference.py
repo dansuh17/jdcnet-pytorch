@@ -1,5 +1,6 @@
 import torch
 import librosa
+import pickle
 from mido import Message, MidiFile, MidiTrack
 import numpy as np
 from tqdm import tqdm
@@ -54,7 +55,7 @@ def spectrogram_chunks(log_mag_spec: np.ndarray, chunk_size=31):
 
 
 def extract_melody(audio_file_path: str, model, pitch_labeler: PitchLabeler,
-                   sr=8000, hop_length=80, n_fft=1024):
+                   save_to: str = None, sr=8000, hop_length=80, n_fft=1024):
     """
     Extract melody from an audio file.
 
@@ -62,6 +63,7 @@ def extract_melody(audio_file_path: str, model, pitch_labeler: PitchLabeler,
         audio_file_path(str): audio file path
         model: JDCNet model
         pitch_labeler(PitchLabeler): pitch labeler
+        save_to(str): file name to save the melody info
 
     Returns:
         melody_line: MIDI number per frame. Value of `-1` represents 'no note'
@@ -98,10 +100,16 @@ def extract_melody(audio_file_path: str, model, pitch_labeler: PitchLabeler,
     frame_times = librosa.core.frames_to_time(
         frame_indices, sr=sr, hop_length=hop_length, n_fft=n_fft)
     print(f'Melody extracted from {audio_file_path}, num_frames: {len(melody_line)}')
+
+    if save_to is not None:
+        with open(save_to, 'wb') as f:
+            pickle.dump((melody_line, frame_times), f)
+        print(f'melody saved to: {save_to}')
+
     return melody_line, frame_times
 
 
-def save_midi(melody, timestamps, name='mysong'):
+def save_midi(melody, timestamps, output_file='mysong.mid'):
     """
     Given per-frame MIDI values and its timestamps, convert to midi file.
 
@@ -129,8 +137,9 @@ def save_midi(melody, timestamps, name='mysong'):
         midi_note = int(midi_note)
 
         if curr_note != midi_note:
-            track.append(Message('note_off', note=0, velocity=64, time=0))
-            print(f'msg=NOTE_OFF, midi={0}, time={time}, tick=0')
+            if curr_note != -1:
+                track.append(Message('note_off', note=curr_note, velocity=64, time=0))
+                print(f'msg=NOTE_OFF, midi={curr_note}, time={time}, tick=0')
 
             if midi_note != -1:
                 delta_time = time - prev_time
@@ -140,8 +149,8 @@ def save_midi(melody, timestamps, name='mysong'):
                 print(f'msg=MIDI_ON, midi={midi_note}, time={time}, tick={ticks}')
 
         curr_note = midi_note
-    mid.save(f'{name}.mid')
-    print(f'MIDI file saved to {name}.mid')
+    mid.save(output_file)
+    print(f'MIDI file saved to {output_file}')
 
 
 if __name__ == '__main__':
@@ -149,5 +158,5 @@ if __name__ == '__main__':
     print(model)
 
     # mymelody, timestamps = extract_melody('FacesOnFilm_WaitingForGa_MIX.wav', model, PitchLabeler())
-    mymelody, timestamps = extract_melody('gangnam_style.wav', model, PitchLabeler())
-    save_midi(mymelody, timestamps, name='gangnam_style')
+    # mymelody, timestamps = extract_melody('gangnam_style.wav', model, PitchLabeler(), save_to='gangnam_style')
+    # save_midi(mymelody, timestamps, output_file='gangnam_style.mid')

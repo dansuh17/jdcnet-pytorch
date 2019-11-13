@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+"""
+Script for extracting melody from audio file using trained JDCNet.
+"""
 import argparse
 import os
 from jdc.inference import extract_melody, save_midi, read_jdc_model

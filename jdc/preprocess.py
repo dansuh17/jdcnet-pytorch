@@ -164,9 +164,3 @@ def preprocess(in_root: str, out_root: str, metadata_path: str):
             print(f'Saving: {out_path}, count: {count}')
             with open(out_path, 'wb') as wf:
                 pickle.dump(spec_hz, wf)
-
-
-if __name__ == '__main__':
-    # db = MedleyDBMelodyDataset('/Users/dansuh/datasets/', 'MedleyDB-Melody/medleydb_melody_metadata.json')
-    preprocess(in_root='/Users/dansuh/datasets/', out_root='./out_root',
-               metadata_path='MedleyDB-Melody/medleydb_melody_metadata.json')

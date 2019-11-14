@@ -3,7 +3,6 @@ Train script for
 "Joint Detection and Classification of Singing Voice Melody
 Using Convolutional Recurrent Neural Networks" by Kum et al. (2019)
 """
-import json
 import torch
 from torch import nn
 from torch.utils.data import Dataset
@@ -20,6 +19,9 @@ class MedleyDBDataLoaderBuilder(DefaultDataLoaderBuilder):
 
 
 class JDCTrainer(NetworkTrainer):
+    """
+    Trainer implementation for JDCNet.
+    """
     def __init__(self, config: dict):
         super().__init__(epoch=self.get_or_else(config, 'epoch', 100),
                          log_every_local=self.get_or_else(config, 'log_every_local', 20))
@@ -144,10 +146,3 @@ class JDCTrainer(NetworkTrainer):
                 # log the predicted result
                 self._writer.add_scalar(
                     f'{tag_name}/predicted', pred_classes[samp_idx][t], global_step=t)
-
-
-if __name__ == '__main__':
-    with open('default_config.json', 'r') as jsonf:
-        config = json.load(jsonf)
-    jdc_trainer = JDCTrainer(config)
-    jdc_trainer.fit()

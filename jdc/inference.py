@@ -131,7 +131,8 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
     microsecs_per_tick = tempo / mid.ticks_per_beat
     assert(len(melody) == len(timestamps))
 
-    max_note_length = int(0.2 * 1e6 / microsecs_per_tick)
+    # maximum MIDI note length of 1 second
+    max_note_length = int(1 * 1e6 / microsecs_per_tick)
 
     prev_time = 0
     curr_note = -1
@@ -178,7 +179,7 @@ def save_midi(melody, timestamps, output_file='mysong.mid'):
 
 
 if __name__ == '__main__':
-    with open('gangnam_style', 'rb') as f:
+    with open('melody_results/someone_like_you.pkl', 'rb') as f:
         m, t = pickle.load(f)
 
-    save_midi(m, t, output_file='test.mid')
+    save_midi(m, t, output_file='someone_like_you.mid')
